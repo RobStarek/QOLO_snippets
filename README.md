@@ -16,7 +16,7 @@ The estim() function returns reconstructed density matrix.
 
 ### Example:
 Minimal single-qubit reconstruction from Pauli-state tomography.
-```
+```ruby
 import numpy as np
 from MaxLikCore import MakeRPV, estim
 #Definition of projection vector
