@@ -12,13 +12,13 @@ An orderd list of prepared/projected list is provided to MakeRPV() function to
 generate auxiliary array of projection-preparation matrices (Rho-Pi vector). 
 
 The Rho-Pi vector is inserted as an argument together with data to estim() function.
-The estim() function returns reconstructed density matrix.
+The Reconstruct() function returns reconstructed density matrix.
 
 ### Example:
 Minimal single-qubit reconstruction from Pauli-state tomography.
 ```ruby
 import numpy as np
-from MaxLikCore import MakeRPV, estim
+from MaxLikCore import MakeRPV, Reconstruct
 #Definition of projection vector
 LO = np.array([[1],[0]])
 HI = np.array([[0],[1]])
@@ -33,7 +33,7 @@ testdata = np.array([500,500,500,500,1000,1])
 #Prepare (Rho)-Pi vect
 RPV = MakeRPV(Order, False)
 #Run reconstruction
-E = estim(testdata, RPV, 1000, 1e-6)
+E = Reconstruct(testdata, RPV, 1000, 1e-6)
 ```
         
 ### References:
