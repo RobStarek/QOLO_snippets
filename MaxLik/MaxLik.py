@@ -2,24 +2,24 @@
 import numpy as np
 from functools import reduce
 import itertools
-"""DQML
+"""MaxLik.py
 Discrete-variable quantum maximum-likelihood reconstruction.
 
 This module provides a simple numpy-implementation of Maximum likelihood reconstruction
-method [1,2] for reconstructing low-dimensional quantum states and processes (<=4 qubits).
+method [1,2] for reconstructing low-dimensional quantum states and processes (<=6 qubits in total).
 
 This package is limited to projection and preparation of pure states.
 
 An orderd list of prepared/projected list is provided to MakeRPV() function to
 generate auxiliary array of projection-preparation matrices (Rho-Pi vector). 
 
-The Rho-Pi vector is inserted as an argument together with data to estim() function.
-The estim() function returns reconstructed density matrix.
+The Rho-Pi vector is inserted as an argument together with data to Reconstruct() function.
+The Reconstruct() function returns reconstructed density matrix.
 
 Example:
     Minimal single-qubit reconstruction
         import numpy as np
-        from MaxLikCore import MakeRPV, estim
+        from MaxLikCore import MakeRPV, Reconstruct
         #Definition of projection vector
         LO = np.array([[1],[0]])
         HI = np.array([[0],[1]])
@@ -34,7 +34,7 @@ Example:
         #Prepare (Rho)-Pi vect
         RPV = MakeRPV(Order, False)
         #Run reconstruction
-        E = estim(testdata, RPV, 1000, 1e-6)
+        E = Reconstruct(testdata, RPV, 1000, 1e-6)
 
 
 References:
@@ -45,8 +45,6 @@ Todo:
     * ?
 
 """
-
-"""Necessary imports"""
 
 
 def RPVketToRho(RPVKet):
@@ -95,16 +93,15 @@ def blockshaped(arr, nrows, ncols):
                .swapaxes(1, 2)
                .reshape(-1, nrows, ncols))
 
-# create RPV vector
-
 
 def MakeRPV(Order, Proc=False):
     """
     Create list preparation-projection kets.
     Kets are stored as line-vectors or column-vectors in n x d ndarray.
+    This function is here to avoid writing explicit nested loops for all combinations of measured projection.
 
     Args:
-        Order: list of measured/prepared states on each qubit, first axis denotes qubit, second measured states, elements are kets stored as line-vectors.
+        Order: list of measured/prepared states on each qubit, first axis denotes qubit, second measured states, elements are kets stored as line-vectors or column-vectors.
         Proc: if True, first half of Order list is regarded as input states and therefore conjugated prior building RPV ket.
 
     Returns:
@@ -123,19 +120,14 @@ def MakeRPV(Order, Proc=False):
         RPVvectors.append(reduce(np.kron, projection))
     return np.array(RPVvectors)
 
-# --------------------------------------------------------
-# Iterative reconstruction
-# takes data as complex np.array of 1296 count rates
-# --------------------------------------------------------
-
-
-def estim(data, RPVket, max_iters=100, tres=1e-6):
+def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
     """
     Maximum likelihood reconstruction of quantum state/process.
 
     Args:
         data: ndarray of n real numbers, measured in n projections of state.
-        RPVket: Complex n x d ndarray of kets describing the states that the measured state is projected onto.
+        RPVket: Complex n x d (line vectors) or n x d x 1 (column vectors) ndarray of kets describing the states
+        that the measured state is projected onto.
         max_iters: integer number of maximal iterations
         tres: when the change of estimated matrix measured by Frobenius norm is less than this, iteration is stopped
 
