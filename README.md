@@ -11,7 +11,7 @@ This package is limited to projection and preparation of pure states.
 An orderd list of prepared/projected list is provided to MakeRPV() function to
 generate auxiliary array of projection-preparation matrices (Rho-Pi vector). 
 
-The Rho-Pi vector is inserted as an argument together with data to estim() function.
+The Rho-Pi vector is inserted as an argument together with data to Reconstruct() function.
 The Reconstruct() function returns reconstructed density matrix.
 
 ### Example:
