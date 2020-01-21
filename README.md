@@ -1,6 +1,6 @@
 # QOLO_snippets
-A repository for sharing QOLO code snippets
-I want to store and share useful code-snippets for QOLO lab.
+A repository for sharing QOLO code snippets.
+I would like to store and share useful code-snippets for QOLO lab, mainly for discrete-variable quantum information science.
 
 ## MaxLik.py
 This module provides a simple numpy-implementation of Maximum likelihood reconstruction
