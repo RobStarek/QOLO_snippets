@@ -111,10 +111,19 @@ def MakeRPV(Order, Proc=False):
     if Proc:
         # When reconstructing a process, conjugate the preparation qubits
         # just conjugate them, do not perform Hermitean conjugation
+
+        #To avoid modification of original qubit references,
+        #which may result in some errors, use copy a of an Order list instead
+        OrderC = [[np.copy(qubit) for qubit in qubits] for qubits in Order]
         for i in range(N//2):
-            for j in range(len(Order[i])):
-                Order[i][j] = Order[i][j].conjugate()
-    RPVindex = itertools.product(*Order, repeat=1)
+            for j in range(len(OrderC[i])):
+                OrderC[i][j] = np.conjugate(OrderC[i][j])
+        #To do: construct OrderC directly, instead copying it and 
+        #modifying it later
+        RPVindex = itertools.product(*OrderC, repeat=1)
+    else:
+        RPVindex = itertools.product(*Order, repeat=1)
+        
     RPVvectors = []
     for projection in RPVindex:
         RPVvectors.append(reduce(np.kron, projection))
