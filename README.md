@@ -93,3 +93,9 @@ Round mean value to a certain number of significant digits of the uncertainty.
 >>> FormatToError(314.159, 20, n=1)
 '310(20)'
 ```
+
+***
+
+## WaveplateBox
+Toolbox of commonly used function for waveplate-polarization manipulation in Jones formalism.
+Contains search routines for arbitrary state preparation and a search for arbitrary single-qubit preparation.
