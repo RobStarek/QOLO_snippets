@@ -2,6 +2,8 @@
 A repository for sharing QOLO code snippets.
 I would like to store and share useful code-snippets for QOLO lab, mainly for discrete-variable quantum information science.
 
+***
+
 ## MaxLik.py
 This module provides a simple numpy-implementation of Maximum likelihood reconstruction
 method [1,2] for reconstructing low-dimensional quantum states and processes (<=6 qubits).
@@ -74,4 +76,20 @@ RhoGHZ = ketbra(KetGHZ, KetGHZ)
 #KetGHZ[[0,-1],0] = 2**.-5
 #or explicit
 #KetGHZ = (np.array([1,0,0,0,0,0,0,1])*2**.-5).reshape((8,1))
+```
+
+***
+## Auxiliaries
+### SigRound.py
+Significant-digits-rounding snippet.
+Round mean value to a certain number of significant digits of the uncertainty.
+
+#### Example
+```python
+>>> RoundToError(3.141592, 0.01, n=1)
+(3.14, 0.01)
+>>> FormatToError(3.141592, 0.01, n=1)
+'3.14(1)'
+>>> FormatToError(314.159, 20, n=1)
+'310(20)'
 ```
