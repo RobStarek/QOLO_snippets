@@ -87,6 +87,8 @@ def blockshaped(arr, nrows, ncols):
 
     If arr is a 2D array, the returned array should look like n subblocks with
     each subblock preserving the "physical" layout of arr.
+    
+    Source: https://stackoverflow.com/a/16873755
     """
     h = arr.shape[0]
     return (arr.reshape(h//nrows, nrows, -1, ncols)
