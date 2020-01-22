@@ -12,6 +12,8 @@ Example:
 """
 
 
+
+
 def RoundToError(mean, std, n=1):
     """
     Round mean and corresponding deviation to specified number of significant
@@ -24,7 +26,7 @@ def RoundToError(mean, std, n=1):
         tuple (rounded_mean, rounded_std)
     """
     significant_order = floor(log10(std))
-    digits = (n-1)-significant_order
+    digits = (n-1)-significant_order #decimal digits
     rounded_std = round(std, digits)
     rounded_mean = round(mean, digits)
     return rounded_mean, rounded_std
@@ -52,10 +54,16 @@ def FormatToError(mean, std, n=1):
     rounded_std = round(std, digits)
     rounded_mean = round(mean, digits)
     std_repre = int((10**digits)*rounded_std)
+        
     if significant_order > 0:
         format_string = "{:d}"
         rounded_mean = int(rounded_mean)
-        std_repre = int(rounded_std)
+        if n <= significant_order:
+            std_repre = f"{int(rounded_std):d}"
+        else:
+            std_format_string = f"{{:.{n - significant_order - 1:d}f}}"
+
+            std_repre = std_format_string.format(rounded_std)
     else:
         format_string = f"{{:.{digits:d}f}}"
     mean_repre = format_string.format(rounded_mean)
