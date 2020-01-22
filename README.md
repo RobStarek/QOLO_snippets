@@ -16,7 +16,7 @@ The Reconstruct() function returns reconstructed density matrix.
 
 ### Example:
 Minimal single-qubit reconstruction from Pauli-state tomography.
-```ruby
+```python
 import numpy as np
 from MaxLikCore import MakeRPV, Reconstruct
 #Definition of projection vector
@@ -35,7 +35,43 @@ RPV = MakeRPV(Order, False)
 #Run reconstruction
 E = Reconstruct(testdata, RPV, 1000, 1e-6)
 ```
+See more examples to learn how to reconstruct multi-qubit state or quantum process.
         
 ### References:
 1. [Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001)](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101)
 2. [Quantum State Estimation. Lecture Notes in Physics (Springer Berlin Heidelberg, 2004), ISBN: 978-3-540-44481-7](https://doi.org/10.1007/b98673)
+
+***
+
+## KetSugar.py
+Shorthand notation, basic constants and frequently used function for some basic low-dimensional discrete-variable quantum mechanics. It provides a way to comfortably write a more comprehensive expression and some functions that I used most frequently. 
+It can be used as a module with definions, or the functions/constants could be copy-pasted to your code as desired.
+
+### Content
+* Pauli-matrix eigenstates (|0/1>, |+/->, |R/L>)
+* Constructor of qubit kets from Bloch coordinates
+* Hermite conjugation (conjugate transpose, dagger)
+* Braket inner product <a|b>
+* Ketbra outer product |a><b|
+* Application of operator U.R.U^{+}
+* Expectation value <a|R|a>
+* Purity Tr(R^2)
+* Fidelity Tr(Sqrt(Sqrt(A).B.Sqrt(B)))
+* Overlap Tr(A.B)
+* Partial trace over left-most qubit
+* Partial trace over right-most qubit
+
+### Example:
+A simple example for simplification of GHZ state ket construction
+```python
+#Comprehensive in-line construction of GHZ-state (|000> + |111>)/sqrt(2)
+KetGHZ = (kron(LO, LO, LO) + kron(HI, HI, HI))*2**-.5
+RhoGHZ = ketbra(KetGHZ, KetGHZ)
+#instead of bit longer
+#KetGHZ = (np.kron(LO, np.kron(LO)) + np.kron(HI, np.kron(HI)))*2**-.5
+#or two-line
+#KetGHZ = np.zeros((8,1))
+#KetGHZ[[0,-1],0] = 2**.-5
+#or explicit
+#KetGHZ = (np.array([1,0,0,0,0,0,0,1])*2**.-5).reshape((8,1))
+```
