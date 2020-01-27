@@ -42,6 +42,14 @@ def kron(*arrays):
         E = np.kron(E,M)
     return E
 
+def BinKet(i=0,imx=1):
+    """
+    Computational base states i in imx+1-dimensional vectors.
+    """
+    ket = np.zeros((imx+1,1), dtype=complex)
+    ket[i] = 1
+    return ket
+
 #Ket constructors
 def BlochKet(theta, phi):
     """
