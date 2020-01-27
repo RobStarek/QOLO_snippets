@@ -133,3 +133,28 @@ def SearchForKet(ket, input_state=np.array([[1],[0]]), tol=1e-6):
     Fs = np.array([R['fun'] for R in Rs])
     idx = np.argmin(Fs)
     return Rs[idx]
+
+def SearchForRho(rho, input_state=np.array([[1],[0]]), tol=1e-6):
+    """
+    Search for wave plates angles x,y which prepare desired pure density matrix from input state
+    with setup:
+    input_state->QWP(y)-HWP(x)->
+    Args:
+        ket - desired Jones vector to be prepared
+        input_state - input Jones vector
+        tol - minimizer tolerance, see scipy.optimize.minimize docs.
+    Returns:
+        R - dictionary with minimization details. 
+        R['x'] contains desired angles, R['fun'] is measure of quality (should be -1)
+        See scipy.optimize.minimize docs for more details.
+    """    
+    #Construct function to be minimized
+    def minim(x):
+        ketX = WPPrepare(x[0],x[1], input_state)        
+        return -np.abs(ketX.T.conjugate() @ rho @ ketX)[0,0]
+    #Start minimization from multiple initial guessses to avoid sub-optimal local extremes.
+    Rs = [minimize(minim, g, bounds=[wp_bounds]*2, tol=tol) for g in search_grid_qh]
+    #Pick global extereme.
+    Fs = np.array([R['fun'] for R in Rs])
+    idx = np.argmin(Fs)
+    return Rs[idx]
