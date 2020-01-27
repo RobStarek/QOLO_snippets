@@ -51,6 +51,7 @@ It can be used as a module with definions, or the functions/constants could be c
 
 ### Content
 * Pauli-matrix eigenstates (|0/1>, |+/->, |R/L>)
+* Computational base state constructor.
 * Constructor of qubit kets from Bloch coordinates
 * Hermite conjugation (conjugate transpose, dagger)
 * Braket inner product <a|b>
