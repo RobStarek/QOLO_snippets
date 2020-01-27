@@ -100,3 +100,9 @@ Round mean value to a certain number of significant digits of the uncertainty.
 ## WaveplateBox
 Toolbox of commonly used function for waveplate-polarization manipulation in Jones formalism.
 Contains search routines for arbitrary state preparation and a search for arbitrary single-qubit preparation.
+
+
+***
+
+## ChoiBox
+A little collection of function for creating, finding and transforming unitary to Choi matrices.
