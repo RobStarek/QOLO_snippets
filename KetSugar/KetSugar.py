@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+import scipy.linalg
 """
 Shorthand notation, basic constants and frequently used function
 for some basic low-dimensional DV quantum mechanics.
@@ -146,9 +147,12 @@ def Fidelity(A, B):
     Fidelity between density matrices A, B.
     Accepts both mixed. If A or B is pure, consider using Overlap().
     """
-    A0 = sqrtm(A)
-    A1 = (np.dot(np.dot(A0, B), A0))
-    A2 = sqrtm(A1)
+    #A0 = sqrtm(A)
+    Ax = A/np.trace(A)
+    Bx = B/np.trace(B)
+    A0 = scipy.linalg.sqrtm(Ax)
+    A1 = (np.dot(np.dot(A0, Bx), A0))
+    A2 = scipy.linalg.sqrtm(A1)
     return np.abs(A2.trace())**2
 
 def TraceLeft(M):
