@@ -173,3 +173,110 @@ def TraceRight(M):
         for j in range(blocks):
             TrM[i,j] = np.trace(M[i*2:(1+i)*2, j*2:(1+j)*2])
     return TrM
+
+def blockshaped(arr, nrows, ncols):
+    """
+    Return an array of shape (n, nrows, ncols) where
+    n * nrows * ncols = arr.size
+    If arr is a 2D array, the returned array should look like n subblocks with
+    each subblock preserving the "physical" layout of arr.
+    
+    Source: https://stackoverflow.com/a/16873755
+    """
+    h = arr.shape[0]
+    return (arr.reshape(h//nrows, nrows, -1, ncols)
+               .swapaxes(1, 2)
+               .reshape(-1, nrows, ncols))
+
+def TraceMiddle(M):
+    """
+    Partial trace, trace middle qubit of the 3-qubit density matrix
+    """
+    blocks = blockshaped(M, 2,2)
+    sum_coord = [[0,5],[2,7],[8,13],[10,15]]
+    
+    temp = []
+    for idx1, idx2 in sum_coord:
+        temp.append(blocks[idx1]+blocks[idx2])
+    
+    new_arr = np.zeros((4,4),dtype=complex)
+    new_arr[0:2, 0:2] = temp[0]
+    new_arr[0:2, 2:4] = temp[1]
+    new_arr[2:4, 0:2] = temp[2]
+    new_arr[2:4, 2:4] = temp[3]
+    return new_arr
+    
+
+#Helper function for TraceOverQubits()
+def _NumToIdxV(i, digits):
+    """
+    Convert non-negative integer number to its binary
+    representation as numpy array. Ideal for indices.
+    Args:
+        i ... non-negative integer to converted
+        digits ... number of binary digits
+    Returns:
+        arr ... ndarray with binary representation of i, MSB first        
+    """
+    if digits < np.log2(i):
+        raise(f"Number of digits {digits} is too low for integer {i}.")    
+    #Integer-to-binary list conversion snippet:
+    #https://stackoverflow.com/a/10322018
+    li = [1 if digit=='1' else 0 for digit in bin(i)[2:]]
+    remaining = digits - len(li)
+    if remaining > 0:
+        li = [0]*remaining + li
+    return np.array(li)
+
+#Helper function for TraceOverQubits()
+def _IdxVToNum(idxv, pow2):  
+    """
+    Convert a vector with binary values to a decadic number.
+    MSB is defined with pow2 helper array.
+    """
+    return pow2 @ idxv
+      
+def TraceOverQubits(M,li):
+    """
+    General partial trace of square matrix M over qubits specified in li.
+    It is probably bit slower than TraceLeft and TraceRight functions due to internal
+    cycles.
+
+    Args:
+        M ... square matrix with power of 2 dimension
+        li ... list with as many elements as qubits. If element is 1, then the qubit is traced over.
+           if element is 0, qubit is kept.
+    Returns:
+        Mnew ... matrix after partial trace
+    Raises:
+        "Trace list does not match the matrix." when the dimension of the matrix does
+        not match the length of list of qubits.
+    """
+    dim = M.shape[0]
+    nq = int(np.log2(dim))
+    sum_nq = int(sum(li))
+    new_nq = int(nq - sum_nq)    
+    pow2 = 2**np.arange(nq)[::-1]
+    if len(li) != np.log2(dim):
+        raise("Trace list does not match the matrix.")        
+    new_dim = int(2**new_nq)
+    sum_dim = int(2**sum_nq)
+    arli = np.array(li)
+
+    Mnew = np.zeros((new_dim, new_dim), dtype=complex)
+    for im in range(new_dim): #iterate over lines of new matrx
+        IV = np.zeros_like(arli)
+        IV[arli==0] = _NumToIdxV(im,new_nq)
+        for jm in range(new_dim): #iterate over cols of new matrix
+            JV = np.zeros_like(arli)
+            JV[arli==0] = _NumToIdxV(jm,new_nq)
+            Sum = 0
+            for iS in range(sum_dim): #do the partial trace
+                jS = iS   
+                IV[arli==1] = _NumToIdxV(iS,sum_nq)                                      
+                JV[arli==1] = _NumToIdxV(jS,sum_nq)
+                idx_i = _IdxVToNum(IV, pow2)
+                idx_j = _IdxVToNum(JV, pow2)
+                Sum += M[idx_i, idx_j]
+            Mnew[im, jm] = Sum    
+    return Mnew
