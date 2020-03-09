@@ -218,8 +218,10 @@ def _NumToIdxV(i, digits):
     Returns:
         arr ... ndarray with binary representation of i, MSB first        
     """
-    if digits < np.log2(i):
-        raise(f"Number of digits {digits} is too low for integer {i}.")    
+    if i==0:
+        return np.zeros(digits)
+    if i>0 and digits < np.log2(i):
+        raise(f"Number of digits {digits} is too low for integer {i}.")
     #Integer-to-binary list conversion snippet:
     #https://stackoverflow.com/a/10322018
     li = [1 if digit=='1' else 0 for digit in bin(i)[2:]]
