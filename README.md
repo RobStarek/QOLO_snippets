@@ -65,6 +65,8 @@ It can be used as a module with definions, or the functions/constants could be c
 * Partial trace over right-most qubit
 * Partial trace over middle qubit in three-qubit density matrix
 * General partial trace of n-qubit density matrix over specified qubits (plus helper functions).
+* Concurrence computation
+* Entanglement of formation computation
 
 ### Example:
 A simple example for simplification of GHZ state ket construction
