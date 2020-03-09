@@ -151,8 +151,12 @@ def Fidelity(A, B):
     Ax = A/np.trace(A)
     Bx = B/np.trace(B)
     A0 = scipy.linalg.sqrtm(Ax)
+    if np.any(np.isnan(A0)):
+        A0 = sqrtm(M)    
     A1 = (np.dot(np.dot(A0, Bx), A0))
     A2 = scipy.linalg.sqrtm(A1)
+    if np.any(np.isnan(A2)):
+        A2 = sqrtm(M)       
     return np.abs(A2.trace())**2
 
 def TraceLeft(M):
@@ -282,3 +286,29 @@ def TraceOverQubits(M,li):
                 Sum += M[idx_i, idx_j]
             Mnew[im, jm] = Sum    
     return Mnew
+
+def ConcurrenceAlt(M):
+    """
+    Alternative formulation of a concurrence.
+    see https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.80.2245
+    Instead of performind two square roots, just use square root of 
+    eigenvalues of M . spin_flipped_M.
+    """
+    RhoFlip = flip_op @ M.conjugate() @ flip_op            
+    R = M @ RhoFlip   
+    eigs = np.linalg.eigvals(R)
+    eigs = np.sort(eigs) #ascending order
+    number1 = eigs[3]**.5 - (eigs[2]**.5+eigs[1]**.5+eigs[0]**.5)
+    return max(0, number1)
+
+def EntOfForm(rho):
+    """
+    Entanglement of formation of two-qubit density matrix.
+    see https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.80.2245
+    """
+    C = ConcurrenceAlt(rho)
+    x_arg = (1 + (1-C*C)**.5)*0.5
+    if x_arg == 0 or x_arg == 1:
+        return 0
+    else:
+        return (-x_arg*np.log2(x_arg) - (1-x_arg)*np.log2(1-x_arg))
