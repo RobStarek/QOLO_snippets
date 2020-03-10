@@ -294,6 +294,7 @@ def ConcurrenceAlt(M):
     Instead of performind two square roots, just use square root of 
     eigenvalues of M . spin_flipped_M.
     """
+    flip_op = np.array([[0,0,0,-1],[0,0,1,0],[0,1,0,0],[-1,0,0,0]])
     RhoFlip = flip_op @ M.conjugate() @ flip_op            
     R = M @ RhoFlip   
     eigs = np.linalg.eigvals(R)
