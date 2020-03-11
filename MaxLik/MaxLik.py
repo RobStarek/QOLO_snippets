@@ -158,7 +158,7 @@ def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
 
     meas = 10*tres  # initial from. meas - far above threshold
 
-    # iterate while you reach threshold in frob. meas. of diff or
+    # iterate until you reach threshold in frob. meas. of diff or
     # exceed maximally allowed number of steps
     while count < max_iters and meas > tres:
         Ep = E  # Original matrix for comparison
