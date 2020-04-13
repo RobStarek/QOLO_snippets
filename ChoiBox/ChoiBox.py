@@ -94,3 +94,22 @@ def FitChiU(Chi):
     guess = GuessUfromChoi(Chi)
     R = minimize(minim, guess)
     return R    
+
+def MapTransform(rho, chi, renorm = True):
+    """
+    Transform input density matrix with Choi matrix.
+    Tr_i[(1 \otimes RhoIn.T) chi (...)^\dagger]
+    Args:
+        rho - density matrix to be transformed
+        chi - quantum process matrix
+        renorm - (default true), trace-normalize output
+    Returns:
+        transformed density matrix
+    """
+    POVM = np.kron(rho.T, np.eye(2, dtype=complex))
+    ChiTrans = POVM @ chi @ ks.dagger(POVM)
+    RhoOut = ks.TraceOverQubits(ChiTrans, [1,0])
+    if renorm:
+        return RhoOut/np.trace(RhoOut)
+    else:
+        return RhoOut
