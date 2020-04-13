@@ -106,9 +106,13 @@ def MapTransform(rho, chi, renorm = True):
     Returns:
         transformed density matrix
     """
-    POVM = np.kron(rho.T, np.eye(2, dtype=complex))
+    d = rho.shape[0] #number of rows
+    n = int(np.log2(d)) #number of qubits
+    trace_list = [1]*n + [0]*n
+
+    POVM = np.kron(rho.T, np.eye(d, dtype=complex))
     ChiTrans = POVM @ chi @ ks.dagger(POVM)
-    RhoOut = ks.TraceOverQubits(ChiTrans, [1,0])
+    RhoOut = ks.TraceOverQubits(ChiTrans, trace_list)
     if renorm:
         return RhoOut/np.trace(RhoOut)
     else:
