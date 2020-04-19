@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-from functools import reduce
-import itertools
 """MaxLik.py
 Discrete-variable quantum maximum-likelihood reconstruction.
 
@@ -46,6 +43,16 @@ Todo:
 
 """
 
+import numpy as np
+from functools import reduce
+import itertools
+try:
+    import numba
+    allow_numba = True
+except:
+    allow_numba = False
+print("MaxLik: Numba Allowed:", allow_numba)
+
 
 def RPVketToRho(RPVKet):
     """
@@ -80,22 +87,6 @@ def RPVketToRho(RPVKet):
     return RhoPiVect
 
 
-def blockshaped(arr, nrows, ncols):
-    """
-    Return an array of shape (n, nrows, ncols) where
-    n * nrows * ncols = arr.size
-
-    If arr is a 2D array, the returned array should look like n subblocks with
-    each subblock preserving the "physical" layout of arr.
-    
-    Source: https://stackoverflow.com/a/16873755
-    """
-    h = arr.shape[0]
-    return (arr.reshape(h//nrows, nrows, -1, ncols)
-               .swapaxes(1, 2)
-               .reshape(-1, nrows, ncols))
-
-
 def MakeRPV(Order, Proc=False):
     """
     Create list preparation-projection kets.
@@ -114,22 +105,65 @@ def MakeRPV(Order, Proc=False):
         # When reconstructing a process, conjugate the preparation qubits
         # just conjugate them, do not perform Hermitean conjugation
 
-        #To avoid modification of original qubit references,
-        #which may result in some errors, use copy a of an Order list instead
+        # To avoid modification of original qubit references,
+        # which may result in some errors, use copy a of an Order list instead
         OrderC = [[np.copy(qubit) for qubit in qubits] for qubits in Order]
         for i in range(N//2):
             for j in range(len(OrderC[i])):
                 OrderC[i][j] = np.conjugate(OrderC[i][j])
-        #To do: construct OrderC directly, instead copying it and 
-        #modifying it later
+        # To do: construct OrderC directly, instead copying it and
+        # modifying it later
         RPVindex = itertools.product(*OrderC, repeat=1)
     else:
         RPVindex = itertools.product(*Order, repeat=1)
-        
+
     RPVvectors = []
     for projection in RPVindex:
         RPVvectors.append(reduce(np.kron, projection))
     return np.array(RPVvectors)
+
+
+def _ReconstutionLoop(E, RPVAux, OutPiRho, max_iters, tres):
+    """
+    Inner loop of the Reconstruction method.
+    It is separated in order to compile it with numba.
+    Args:
+        RPVAux: hstacked RPVket
+        OutPiRho: hstacked RhoPiVect block-wise-multiplied with data
+        max_iters, tres: see mother method.
+    Returns:
+        Reconstructed matrix E
+    """
+    count = 0
+    meas = 10*tres
+    # iterate until you reach threshold in frob. meas. of diff or
+    # exceed maximally allowed number of steps
+    while count < max_iters and meas > tres:
+        Ep = E  # Original matrix for comparison
+        # K-Matrix prepare using numpy tricks
+        Aux = E @ RPVAux  # Vector of E|RPV> results
+        # Denominator with probabilities, avoiding unnecessary multiplication
+        Denom = np.sum(RPVAux.conjugate()*Aux, axis=0)
+        # reshape below allows broadcasting, this particular works in plain numpy as well as numba
+        K = np.sum(OutPiRho/Denom.reshape((-1, 1, 1)), axis=0)  # do the sum
+        # apply K operator from left and right
+        E = K @ E @ K
+        TrE = np.sum(np.diag(E))
+        E = E/TrE  # norm the matrix
+        meas = abs(np.linalg.norm((Ep-E)))  # threshold check
+        count += 1  # counter increment
+    return E
+
+
+# Define function ReconstructionLoop() and set numba jit, when possible
+if allow_numba:
+    try:
+        ReconstutionLoop = numba.jit(nopython=True)(_ReconstutionLoop)
+    except:
+        raise
+else:
+    ReconstutionLoop = _ReconstutionLoop
+
 
 def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
     """
@@ -146,34 +180,10 @@ def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
         E: estimated density matrix, d x d complex ndarray.
     """
     RhoPiVect = RPVketToRho(RPVket)
-    RhoPiVectAux = np.hstack(RhoPiVect)
+    RPVAux = np.hstack(RPVket)
     # prepare data-rho-pi product
     dim = RhoPiVect.shape[1]
-    Xaux = data[:, np.newaxis, np.newaxis]
-    OutPiRho = Xaux*RhoPiVect
-
-    count = 0
+    OutPiRho = data[:, np.newaxis, np.newaxis]*RhoPiVect
     E = np.identity(dim, dtype=complex)
     E = E*1.0/dim
-
-    meas = 10*tres  # initial from. meas - far above threshold
-
-    # iterate until you reach threshold in frob. meas. of diff or
-    # exceed maximally allowed number of steps
-    while count < max_iters and meas > tres:
-        Ep = E  # Original matrix for comparison
-        # K-Matrix prepare using numpy tricks
-        Etile = np.tile(E.T, RhoPiVectAux.shape[1]//E.shape[1])
-        Denom = Etile*RhoPiVectAux
-        Denom = blockshaped(Denom, dim, dim)
-        Denom = np.sum(Denom, (1, 2))
-        # cast-shape to 1296x16x16 dimension
-        Denom = Denom[:, np.newaxis, np.newaxis]
-        K = np.sum(OutPiRho/Denom, axis=0)  # do the sum
-        # apply K operator from left and right
-        E = np.dot(K, E)
-        E = np.dot(E, K)
-        E = E/(E.trace())  # norm the matrix
-        meas = abs(np.linalg.norm((Ep-E)))  # threshold check
-        count += 1  # counter increment
-    return E
+    return ReconstutionLoop(E, RPVAux, OutPiRho, max_iters, tres)
