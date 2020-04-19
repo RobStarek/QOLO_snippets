@@ -33,7 +33,6 @@ Example:
         #Run reconstruction
         E = Reconstruct(testdata, RPV, 1000, 1e-6)
 
-
 References:
     1. Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001) https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101
     2. Paris (ed.), Rehacek, Quantum State Estimation - 2004, Lecture Notes in Physics, ISBN: 978-3-540-44481-7, https://doi.org/10.1007/b98673
@@ -51,7 +50,8 @@ try:
     allow_numba = True
 except:
     allow_numba = False
-print("MaxLik: Numba Allowed:", allow_numba)
+print("MaxLik: Numba Allowed:", allow_numba, "=> use",
+      "cycle-based" if allow_numba else "vectorized", "K-vector construction")
 
 
 def RPVketToRho(RPVKet):
@@ -104,7 +104,6 @@ def MakeRPV(Order, Proc=False):
     if Proc:
         # When reconstructing a process, conjugate the preparation qubits
         # just conjugate them, do not perform Hermitean conjugation
-
         # To avoid modification of original qubit references,
         # which may result in some errors, use copy a of an Order list instead
         OrderC = [[np.copy(qubit) for qubit in qubits] for qubits in Order]
@@ -123,8 +122,10 @@ def MakeRPV(Order, Proc=False):
     return np.array(RPVvectors)
 
 
-def _ReconstutionLoop(E, RPVAux, OutPiRho, max_iters, tres):
+def ReconstutionLoopVect(E, RPVAux, OutPiRho, max_iters, tres):
     """
+    Internal function for loop-based K-operator construction.
+    When numba is not available, use this vectorized K-operator construction
     Inner loop of the Reconstruction method.
     It is separated in order to compile it with numba.
     Args:
@@ -140,13 +141,29 @@ def _ReconstutionLoop(E, RPVAux, OutPiRho, max_iters, tres):
     # exceed maximally allowed number of steps
     while count < max_iters and meas > tres:
         Ep = E  # Original matrix for comparison
-        # K-Matrix prepare using numpy tricks
         Aux = E @ RPVAux  # Vector of E|RPV> results
-        # Denominator with probabilities, avoiding unnecessary multiplication
         Denom = np.sum(RPVAux.conjugate()*Aux, axis=0)
         # reshape below allows broadcasting, this particular works in plain numpy as well as numba
-        K = np.sum(OutPiRho/Denom.reshape((-1, 1, 1)), axis=0)  # do the sum
-        # apply K operator from left and right
+        K = np.sum(OutPiRho/Denom.reshape((-1, 1, 1)), axis=0)
+        E = K @ E @ K
+        E = E/np.trace(E)  # norm the matrix
+        meas = abs(np.linalg.norm((Ep-E)))  # threshold check
+        count += 1  # counter increment
+    return E
+
+
+def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs):
+    """
+    Internal function for loop-based K-operator construction, written in numba.
+    """
+    count = 0
+    meas = 10*tres
+    while count < max_iters and meas > tres:
+        Ep = E  # Original matrix for comparison
+        K[:, :] = 0  # reset K operator
+        for i in range(projs):
+            Denom = RhoPiVect[i].T.ravel() @ E.ravel()
+            K = K + RhoPiVect[i]*(data[i]/Denom)
         E = K @ E @ K
         TrE = np.sum(np.diag(E))
         E = E/TrE  # norm the matrix
@@ -158,11 +175,14 @@ def _ReconstutionLoop(E, RPVAux, OutPiRho, max_iters, tres):
 # Define function ReconstructionLoop() and set numba jit, when possible
 if allow_numba:
     try:
-        ReconstutionLoop = numba.jit(nopython=True)(_ReconstutionLoop)
+        ReconstutionLoopCycles = numba.jit(
+            nopython=True)(_ReconstructLoopCycles)
     except:
+
+        # Use cycles instead but give waring
+        ReconstutionLoopCycles = _ReconstructLoopCycles
+        print("MaxLik: Numba decoraration of inner loop function failed. The program migh be slower.")
         raise
-else:
-    ReconstutionLoop = _ReconstutionLoop
 
 
 def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
@@ -182,8 +202,15 @@ def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
     RhoPiVect = RPVketToRho(RPVket)
     RPVAux = np.hstack(RPVket)
     # prepare data-rho-pi product
-    dim = RhoPiVect.shape[1]
-    OutPiRho = data[:, np.newaxis, np.newaxis]*RhoPiVect
+    dim = RhoPiVect.shape[1] #pylint might complain about this, but it is really OK
     E = np.identity(dim, dtype=complex)
     E = E*1.0/dim
-    return ReconstutionLoop(E, RPVAux, OutPiRho, max_iters, tres)
+    if allow_numba:
+        # Use cycle-based construction of K-operator, when numba is available.
+        projs = data.size
+        K = np.zeros((dim, dim), dtype=complex)
+        return ReconstutionLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs)
+    else:
+        # Use vectorized contruction of K-operator
+        OutPiRho = data[:, np.newaxis, np.newaxis]*RhoPiVect
+        return ReconstutionLoopVect(E, RPVAux, OutPiRho, max_iters, tres)
