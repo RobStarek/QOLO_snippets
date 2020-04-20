@@ -4,7 +4,7 @@ on randomly generated pure states.
 """
 
 import numpy as np
-from MaxLikMerge import MakeRPV, Reconstruct
+from MaxLik import MakeRPV, Reconstruct
 import KetSugar as ks
 import matplotlib.pyplot as plt
 
