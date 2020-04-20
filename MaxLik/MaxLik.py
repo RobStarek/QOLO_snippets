@@ -50,6 +50,7 @@ try:
     allow_numba = True
 except:
     allow_numba = False
+#allow_numba = False #manual override, just for testing
 print("MaxLik: Numba Allowed:", allow_numba, "=> use",
       "cycle-based" if allow_numba else "vectorized", "K-vector construction")
 
@@ -122,7 +123,7 @@ def MakeRPV(Order, Proc=False):
     return np.array(RPVvectors)
 
 
-def ReconstutionLoopVect(E, RPVAux, OutPiRho, max_iters, tres):
+def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs):
     """
     Internal function for loop-based K-operator construction.
     When numba is not available, use this vectorized K-operator construction
@@ -139,12 +140,14 @@ def ReconstutionLoopVect(E, RPVAux, OutPiRho, max_iters, tres):
     meas = 10*tres
     # iterate until you reach threshold in frob. meas. of diff or
     # exceed maximally allowed number of steps
+    dim2 = dim*dim  
+
     while count < max_iters and meas > tres:
         Ep = E  # Original matrix for comparison
-        Aux = E @ RPVAux  # Vector of E|RPV> results
-        Denom = np.sum(RPVAux.conjugate()*Aux, axis=0)
+        Aux = (E.T).reshape((1, dim2)) @ RhoPiVect.reshape((projs,dim2)).T #denominator terms ~ Tr(E @ RhoPiVect[i])
+        factor = data.ravel()/Aux.ravel() #multiply with data
         # reshape below allows broadcasting, this particular works in plain numpy as well as numba
-        K = np.sum(OutPiRho/Denom.reshape((-1, 1, 1)), axis=0)
+        K = np.sum(RhoPiVect*factor.reshape((-1, 1, 1)), axis=0)
         E = K @ E @ K
         E = E/np.trace(E)  # norm the matrix
         meas = abs(np.linalg.norm((Ep-E)))  # threshold check
@@ -200,17 +203,16 @@ def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
         E: estimated density matrix, d x d complex ndarray.
     """
     RhoPiVect = RPVketToRho(RPVket)
-    RPVAux = np.hstack(RPVket)
     # prepare data-rho-pi product
     dim = RhoPiVect.shape[1] #pylint might complain about this, but it is really OK
+    projs = data.size
     E = np.identity(dim, dtype=complex)
     E = E*1.0/dim
     if allow_numba:
-        # Use cycle-based construction of K-operator, when numba is available.
-        projs = data.size
+        # Use cycle-based construction of K-operator, when numba is available.        
         K = np.zeros((dim, dim), dtype=complex)
         return ReconstutionLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs)
     else:
         # Use vectorized contruction of K-operator
-        OutPiRho = data[:, np.newaxis, np.newaxis]*RhoPiVect
-        return ReconstutionLoopVect(E, RPVAux, OutPiRho, max_iters, tres)
+        #OutPiRho = data[:, np.newaxis, np.newaxis]*RhoPiVect
+        return ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs)
