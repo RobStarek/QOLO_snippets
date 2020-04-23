@@ -287,6 +287,40 @@ def TraceOverQubits(M,li):
             Mnew[im, jm] = Sum    
     return Mnew
 
+def PartialTranspose(M, li):
+    """
+    Generan n-qubit partial transposition.
+    Args:
+        M ... density matrix to transposed
+        li ... list with specification which qubits to be transposed
+               1 when qubit is to be transposed, 0 otherwise
+    Returns:
+        partially transposed matrix
+    Raises:
+        "Trace list does not match the matrix." when the dimension of the matrix does
+        not match the length of list of qubits.
+    Example:
+        RhoABTC = PartialTranspose(RhoABC, [0,1,0])
+    """
+    dim = M.shape[0]
+    if len(li) != np.log2(dim):
+        raise("Trace list does not match the matrix.") 
+
+    #make transposition mask
+    mask = 0
+    for i, k in enumerate(li[::-1]):
+        mask += k*(2**i)
+    
+    MT = np.zeros_like(M)
+    #this could be optimized for Hermitian matrices
+    for i in range(dim):
+        for j in range(dim):
+            di = i & mask
+            dj = j & mask
+            deltaij = di - dj
+            MT[i - deltaij, j + deltaij] = M[i,j]
+    return MT
+
 def ConcurrenceAlt(M):
     """
     Alternative formulation of a concurrence.
