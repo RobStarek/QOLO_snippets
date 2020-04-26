@@ -66,7 +66,8 @@ def Overlap(MA, MB):
     Normalized overlap of two density matrices MA, MB.
     When at least one of the matrices is pure, it is equivalent to fidelity.
     """
-    return np.trace(MA @ MB)/(np.trace(MA)*np.trace(MB))
+    #equivalent to np.trace(MA @ MB)/(np.trace(MA)*np.trace(MB)), but off-diagonal elements are not computed
+    return (MA.T.ravel() @ MB.ravel())/(np.trace(MA)*np.trace(MB))
 
 def Purity(M):
     """
@@ -74,7 +75,8 @@ def Purity(M):
     For n qubits, minimum is (2^n).
     """
     norm = np.trace(M)
-    return np.trace(M @ M)/(norm**2)
+    #equivalent to np.trace(M @ M)/(norm**2), but off-diagonal elements are not computed
+    return (M.T.ravel() @ M.ravel())/(norm**2)
 
 def ApplyOp(Rho,M):
     """
@@ -151,6 +153,7 @@ def Fidelity(A, B):
     Ax = A/np.trace(A)
     Bx = B/np.trace(B)
     A0 = scipy.linalg.sqrtm(Ax)
+    #use scipy to do sqrtm, when it fails (for singular matrices), try KetSugars sqrtm method
     if np.any(np.isnan(A0)):
         A0 = sqrtm(M)    
     A1 = (np.dot(np.dot(A0, Bx), A0))
@@ -211,42 +214,27 @@ def TraceMiddle(M):
     return new_arr
     
 
-#Helper function for TraceOverQubits()
-def _NumToIdxV(i, digits):
-    """
-    Convert non-negative integer number to its binary
-    representation as numpy array. Ideal for indices.
-    Args:
-        i ... non-negative integer to converted
-        digits ... number of binary digits
-    Returns:
-        arr ... ndarray with binary representation of i, MSB first        
-    """
-    if i==0:
-        return np.zeros(digits)
-    if i>0 and digits < np.log2(i):
-        raise(f"Number of digits {digits} is too low for integer {i}.")
-    #Integer-to-binary list conversion snippet:
-    #https://stackoverflow.com/a/10322018
-    li = [1 if digit=='1' else 0 for digit in bin(i)[2:]]
-    remaining = digits - len(li)
-    if remaining > 0:
-        li = [0]*remaining + li
-    return np.array(li)
 
 #Helper function for TraceOverQubits()
-def _IdxVToNum(idxv, pow2):  
+def expandnum(number, mask, bits):
     """
-    Convert a vector with binary values to a decadic number.
-    MSB is defined with pow2 helper array.
+    Expand number bitwise to mask, given the number of bits.
+    Example:
+    expandnum(0b10, 0b0101, 4) -> 0b0100
     """
-    return pow2 @ idxv
-      
+    s = 0
+    k = 0
+    for j in range(bits):
+        mbit = (mask >> j) & 0b1
+        vbit = (number >> k) & 0b1
+        s += ((vbit*mbit) << j)
+        k += int(mbit)
+    return s
+
 def TraceOverQubits(M,li):
     """
     General partial trace of square matrix M over qubits specified in li.
-    It is probably bit slower than TraceLeft and TraceRight functions due to internal
-    cycles.
+    It is bit slower than TraceLeft functions due to internal cycles.
 
     Args:
         M ... square matrix with power of 2 dimension
@@ -258,34 +246,26 @@ def TraceOverQubits(M,li):
         "Trace list does not match the matrix." when the dimension of the matrix does
         not match the length of list of qubits.
     """
-    dim = M.shape[0]
-    nq = int(np.log2(dim))
-    sum_nq = int(sum(li))
-    new_nq = int(nq - sum_nq)    
-    pow2 = 2**np.arange(nq)[::-1]
-    if len(li) != np.log2(dim):
-        raise("Trace list does not match the matrix.")        
-    new_dim = int(2**new_nq)
-    sum_dim = int(2**sum_nq)
-    arli = np.array(li)
-
-    Mnew = np.zeros((new_dim, new_dim), dtype=complex)
-    for im in range(new_dim): #iterate over lines of new matrx
-        IV = np.zeros_like(arli)
-        IV[arli==0] = _NumToIdxV(im,new_nq)
-        for jm in range(new_dim): #iterate over cols of new matrix
-            JV = np.zeros_like(arli)
-            JV[arli==0] = _NumToIdxV(jm,new_nq)
-            Sum = 0
-            for iS in range(sum_dim): #do the partial trace
-                jS = iS   
-                IV[arli==1] = _NumToIdxV(iS,sum_nq)                                      
-                JV[arli==1] = _NumToIdxV(jS,sum_nq)
-                idx_i = _IdxVToNum(IV, pow2)
-                idx_j = _IdxVToNum(JV, pow2)
-                Sum += M[idx_i, idx_j]
-            Mnew[im, jm] = Sum    
-    return Mnew
+    if len(li) != np.log2(M.shape[0]):
+        raise("Trace list does not match the matrix.")
+    mask = 0
+    negmask = 0
+    for i, k in enumerate(li[::-1]):
+        mask += int(k)*(2**i)
+        negmask += int(not(k))*(2**i)    
+    bits = len(li) #number of qubits in M
+    nbits = sum(li) #number of traced-out qubits
+    ndim = 2**(bits-nbits) #dimension of result matrix
+    sumdim = 2**nbits #how many elements we sum
+    MS = np.zeros((ndim, ndim), dtype=M.dtype)
+    for i in range(ndim):
+        for j in range(ndim):
+            i0 = expandnum(i, negmask, bits)
+            j0 = expandnum(j, negmask, bits)
+            for k in range(sumdim):
+                k0 = expandnum(k, mask, bits)
+                MS[i,j] = MS[i,j] + M[i0+k0,j0+k0]
+    return MS
 
 def PartialTranspose(M, li):
     """
