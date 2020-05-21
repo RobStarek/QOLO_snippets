@@ -123,7 +123,7 @@ def MakeRPV(Order, Proc=False):
     return np.array(RPVvectors)
 
 
-def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs):
+def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs, renorm=False):
     """
     Internal function for loop-based K-operator construction.
     When numba is not available, use this vectorized K-operator construction
@@ -132,7 +132,7 @@ def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs):
     Args:
         RPVAux: hstacked RPVket
         OutPiRho: hstacked RhoPiVect block-wise-multiplied with data
-        max_iters, tres: see mother method.
+        max_iters, tres, renorm: see mother method.
     Returns:
         Reconstructed matrix E
     """
@@ -142,12 +142,23 @@ def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs):
     # exceed maximally allowed number of steps
     dim2 = dim*dim  
 
+    if renorm:
+        ProjSum = np.sum(RhoPiVect, axis=0) #Sum of projectors should be ideally 1
+        Lam, U = np.linalg.eig(ProjSum) #eigen-decomposition of the vectors to calculate square root of inverse matrix
+        LamInv = np.diag(Lam**-.5)
+        Hsqrtinv = U @ LamInv @ U.T.conjugate() #square root of inverted matrix
+
     while count < max_iters and meas > tres:
         Ep = E  # Original matrix for comparison
         Aux = (E.T).reshape((1, dim2)) @ RhoPiVect.reshape((projs,dim2)).T #denominator terms ~ Tr(E @ RhoPiVect[i])
         factor = data.ravel()/Aux.ravel() #multiply with data
         # reshape below allows broadcasting, this particular works in plain numpy as well as numba
         K = np.sum(RhoPiVect*factor.reshape((-1, 1, 1)), axis=0)
+        if renorm:
+            factor2 = E.T.ravel() @ ProjSum.ravel()
+            HS = Hsqrtinv*(factor2**0.5)
+            K = HS @ K @ HS
+
         E = K @ E @ K
         E = E/np.trace(E)  # norm the matrix
         meas = abs(np.linalg.norm((Ep-E)))  # threshold check
@@ -155,18 +166,30 @@ def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs):
     return E
 
 
-def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs):
+def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, Hsqrtinv, renorm=False):
     """
     Internal function for loop-based K-operator construction, written in numba.
     """
     count = 0
     meas = 10*tres
+    if renorm:
+        ProjSum = np.sum(RhoPiVect, axis=0)
+        Lam, U = np.linalg.eig(ProjSum)
+        LamInv = np.diag(Lam**-.5)
+        Hsqrtinv = U @ LamInv @ U.T.conjugate()
+        #Hsqrtinv = ProjSum
+
     while count < max_iters and meas > tres:
         Ep = E  # Original matrix for comparison
         K[:, :] = 0  # reset K operator
         for i in range(projs):
             Denom = RhoPiVect[i].T.ravel() @ E.ravel()
             K = K + RhoPiVect[i]*(data[i]/Denom)
+            
+        if renorm:
+            factor2 = E.T.ravel() @ ProjSum.ravel()
+            HS = Hsqrtinv*(factor2**0.5)
+            K = HS @ K @ HS
         E = K @ E @ K
         TrE = np.sum(np.diag(E))
         E = E/TrE  # norm the matrix
@@ -188,7 +211,7 @@ if allow_numba:
         raise
 
 
-def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
+def Reconstruct(data, RPVket, max_iters=100, tres=1e-6, **kwargs):
     """
     Maximum likelihood reconstruction of quantum state/process.
 
@@ -198,21 +221,30 @@ def Reconstruct(data, RPVket, max_iters=100, tres=1e-6):
         that the measured state is projected onto.
         max_iters: integer number of maximal iterations
         tres: when the change of estimated matrix measured by Frobenius norm is less than this, iteration is stopped
+    Kwargs:
+        RhoPiVect: explicit array of matrices with projectors, if entered, RPVket is passed to RhoPiVect 
+        Renorm: if True, projector renormalization will be done each round
 
     Returns:
         E: estimated density matrix, d x d complex ndarray.
     """
-    RhoPiVect = RPVketToRho(RPVket)
+    if kwargs.get('RhoPiVect', False):        
+        RhoPiVect = RPVket                
+    else:
+        RhoPiVect = RPVketToRho(RPVket)
+    renorm = kwargs.get('Renorm', False)
+
     # prepare data-rho-pi product
     dim = RhoPiVect.shape[1] #pylint might complain about this, but it is really OK
     projs = data.size
     E = np.identity(dim, dtype=complex)
     E = E*1.0/dim
     if allow_numba:
-        # Use cycle-based construction of K-operator, when numba is available.        
+        # Use cycle-based construction of K-operator, when numba is available.
         K = np.zeros((dim, dim), dtype=complex)
-        return ReconstutionLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs)
+        H = np.zeros((dim, dim), dtype=complex)
+        return ReconstutionLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, H, renorm)
     else:
         # Use vectorized contruction of K-operator
         #OutPiRho = data[:, np.newaxis, np.newaxis]*RhoPiVect
-        return ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs)
+        return ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs, renorm)
