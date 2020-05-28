@@ -104,7 +104,8 @@ Round mean value to a certain number of significant digits of the uncertainty.
 
 ## WaveplateBox
 Toolbox of commonly used function for waveplate-polarization manipulation in Jones formalism.
-Contains search routines for arbitrary state preparation and a search for arbitrary single-qubit preparation.
+Contains search routines for arbitrary state preparation and a search for arbitrary single-qubit projection.
+Now with optional compensation for imperfect retardances of the waveplates.
 
 
 ***
