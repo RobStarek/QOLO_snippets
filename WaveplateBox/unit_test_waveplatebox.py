@@ -193,3 +193,31 @@ def SearchForRho(rho, input_state=np.array([[1],[0]]), dret1 = 0, dret2 = 0, tol
     Fs = np.array([R['fun'] for R in Rs])
     idx = np.argmin(Fs)
     return Rs[idx]
+
+def SearchForProj(ket, projector_state=np.array([[1],[0]]), dret1 = 0, dret2 = 2, tol=1e-6):
+    """
+    Search for wave plates angles x,y which makes projection onto desired
+    ket state with given projector state with setup:
+    input_state->QWP(y)-HWP(x)->
+    --HWP(x)-QWP(y)->projector
+    Args:
+        ket - desired Jones vector to be projected on
+        input_state - polarizers eigenstate
+        dret1 - retardance error of half-wave plate
+        dret2 - retardance error of quarter-wave plate
+        tol - minimizer tolerance, see scipy.optimize.minimize docs.
+    Returns:
+        R - dictionary with minimization details. 
+        R['x'] contains desired angles, R['fun'] is measure of quality (should be -1)
+        See scipy.optimize.minimize docs for more details.
+    """    
+    #Construct function to be minimized
+    def minim(x):
+        bra = WPProj(x[0],x[1], np.array([[1],[0]]), 0, 0) 
+        return -np.abs(bra @ ket)[0,0]**2
+    #Start minimization from multiple initial guessses to avoid sub-optimal local extremes.
+    Rs = [minimize(minim, g, bounds=[wp_bounds]*2, tol=tol) for g in search_grid_qh]
+    #Pick global extereme.
+    Fs = np.array([R['fun'] for R in Rs])
+    idx = np.argmin(Fs)
+    return Rs[idx]
