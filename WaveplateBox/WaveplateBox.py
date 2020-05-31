@@ -213,7 +213,7 @@ def SearchForProj(ket, projector_state=np.array([[1],[0]]), dret1 = 0, dret2 = 2
     """    
     #Construct function to be minimized
     def minim(x):
-        bra = WPProj(x[0],x[1], np.array([[1],[0]]), 0, 0) 
+        bra = WPProj(x[0],x[1], np.array([[1],[0]]), dret1, dret2)
         return -np.abs(bra @ ket)[0,0]**2
     #Start minimization from multiple initial guessses to avoid sub-optimal local extremes.
     Rs = [minimize(minim, g, bounds=[wp_bounds]*2, tol=tol) for g in search_grid_qh]
