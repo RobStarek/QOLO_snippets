@@ -43,7 +43,6 @@ def GenerateProjectors(dret1=0, dret2=0, projection_state = ks.LO, AT=StandardAn
     operators = [bra.T.conjugate() @ bra for bra in bras]
     return np.array(operators)
 
-
 def GenerateTheoryStates(AT, dret1 = 0, dret2 = 0, input_state = ks.LO):
     """
     Generate theoretical states (in ket form) from preparation table and known 
@@ -58,8 +57,6 @@ def GenerateTheoryStates(AT, dret1 = 0, dret2 = 0, input_state = ks.LO):
     """
     return [wp.WPPrepare(x, y, input_state, dret1, dret2) for x,y in AT] 
     
-
-
 def ImpurityScore(data, dret1=0, dret2=0, projection_state=ks.LO, AT=StandardAngleTable):
     """
     Negative minimal purity of reconstructions from given data assuming
@@ -229,11 +226,10 @@ def EstPrepRetErr(rhos, angle_table, input_state=ks.LO, mode=0):
         return argminS[0], argminS[1], minS
 
 def GetCalibratedAngles(dret1=0, dret2=0, angle_table_proj=StandardAngleTable, projection_state=ks.LO):
-    ProjWanted = GenerateProjectors(0, 0, projection_state, angle_table_proj)
-    bras = [wp.WPProj(x,y, projection_state, dret1, dret2) for x,y in angle_table_proj]
-    kets = [bra.T.conjugate() for bra in bras]    
+    BraWanted = [wp.WPProj(x,y, projection_state, 0, 0) for x,y in angle_table_proj]
+    KetWanted = [bra.T.conjugate() for bra in BraWanted]
     corr_angle_table = []
-    for ket in kets:
+    for ket in KetWanted:
         R = wp.SearchForProj(ket, projection_state, dret1, dret2, 1e-12)
         corr_angle_table.append(R['x'])
     corr_angle_table = np.array(corr_angle_table)
@@ -274,7 +270,3 @@ def CalibrateTomography(projections, angle_table_proj, angle_table_prep, input_s
         "CalibratedProjTable" : new_proj_table
     }
     return resultDict
-
-
-
-
