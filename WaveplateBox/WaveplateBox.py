@@ -53,7 +53,7 @@ def WPPrepare(x,y, input_state = np.array([[1],[0]]), dret1=0, dret2=0):
     Returns:
         Jones vector of the prepared state
     """
-    if dret1!=0 and dret2!=0:
+    if dret1!=0 or dret2!=0:
         return WP(x, np.pi + dret1) @ WP(y, np.pi/2 + dret2) @ input_state
     else:
         return HWP(x) @ QWP(y) @ input_state
