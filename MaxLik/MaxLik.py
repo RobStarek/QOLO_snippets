@@ -166,30 +166,54 @@ def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs, renorm
     return E
 
 
-def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, Hsqrtinv, renorm=False):
+def GrammSchmidt(X, row_vecs=False, norm=True):
+    """
+    Vectorized Gramm-Schmidt orthogonalization.
+    Creates an orthonormal system of vectors spanning the same vector space
+    which is spanned by vectors in matrix X.
+
+    Args:
+        X: matrix of vectors
+        row_vecs: are vectors store as line vectors? (if not, then use column vectors)
+        norm: normalize vector to unit size
+    Returns:
+        Y: matrix of orthogonalized vectors
+    Source: https://gist.github.com/iizukak/1287876#gistcomment-1348649
+    """
+    if not row_vecs:
+        X = X.T
+    Y = X[0:1, :].copy()
+    for i in range(1, X.shape[0]):
+        proj = np.diag(
+            (X[i, :].dot(Y.T)/np.linalg.norm(Y, axis=1)**2).flat).dot(Y)
+        Y = np.vstack((Y, X[i, :] - proj.sum(0)))
+    if norm:
+        Y = np.diag(1/np.linalg.norm(Y, axis=1)).dot(Y)
+    if row_vecs:
+        return Y
+    else:
+        return Y.T
+
+
+def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, ProjSum, Hsqrtinv, renorm=False):
     """
     Internal function for loop-based K-operator construction, written in numba.
     """
     count = 0
     meas = 10*tres
-    if renorm:
-        ProjSum = np.sum(RhoPiVect, axis=0)
-        Lam, U = np.linalg.eig(ProjSum)
-        LamInv = np.diag(Lam**-.5)
-        Hsqrtinv = U @ LamInv @ U.T.conjugate()
-        #Hsqrtinv = ProjSum
 
     while count < max_iters and meas > tres:
         Ep = E  # Original matrix for comparison
         K[:, :] = 0  # reset K operator
         for i in range(projs):
             Denom = RhoPiVect[i].T.ravel() @ E.ravel()
-            K = K + RhoPiVect[i]*(data[i]/Denom)
-            
+            K = K + RhoPiVect[i]*(data[i]/Denom)            
         if renorm:
             factor2 = E.T.ravel() @ ProjSum.ravel()
             HS = Hsqrtinv*(factor2**0.5)
             K = HS @ K @ HS
+            #E = HS @ K @ E @ K @ HS
+        #else:        
         E = K @ E @ K
         TrE = np.sum(np.diag(E))
         E = E/TrE  # norm the matrix
@@ -242,8 +266,20 @@ def Reconstruct(data, RPVket, max_iters=100, tres=1e-6, **kwargs):
     if allow_numba:
         # Use cycle-based construction of K-operator, when numba is available.
         K = np.zeros((dim, dim), dtype=complex)
-        H = np.zeros((dim, dim), dtype=complex)
-        return ReconstutionLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, H, renorm)
+        H = np.zeros((dim, dim), dtype=complex)        
+        S = np.sum(RhoPiVect, axis=0)
+        if renorm:
+            Lam, U = np.linalg.eigh(S)
+            if np.sum(np.abs(Lam - Lam[0]))<dim*1e-14:
+                U = np.eye(dim, dtype=complex)
+            elif np.abs(np.sum(U @ U.T.conjugate() - np.eye(dim)))>dim*1e-14:
+                U = GrammSchmidt(U, False, True)
+            LamInv = np.diag(Lam**-.5)
+            Hsqrtinv = U @ LamInv @ U.T.conjugate()
+        else:
+            Hsqrtinv = H
+
+        return ReconstutionLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, S, Hsqrtinv, renorm)
     else:
         # Use vectorized contruction of K-operator
         #OutPiRho = data[:, np.newaxis, np.newaxis]*RhoPiVect
