@@ -155,11 +155,11 @@ def Fidelity(A, B):
     A0 = scipy.linalg.sqrtm(Ax)
     #use scipy to do sqrtm, when it fails (for singular matrices), try KetSugars sqrtm method
     if np.any(np.isnan(A0)):
-        A0 = sqrtm(M)    
+        A0 = sqrtm(Ax)    
     A1 = (np.dot(np.dot(A0, Bx), A0))
     A2 = scipy.linalg.sqrtm(A1)
     if np.any(np.isnan(A2)):
-        A2 = sqrtm(M)       
+        A2 = sqrtm(A1)       
     return np.abs(A2.trace())**2
 
 def TraceLeft(M):
