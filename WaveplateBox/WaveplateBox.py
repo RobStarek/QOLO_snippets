@@ -74,18 +74,20 @@ def WPProj(x,y, proj_state = np.array([[1],[0]]), dret1=0, dret2=0):
     return (proj_state.T.conjugate()) @ WP(y, np.pi/2 + dret2) @ WP(x, np.pi + dret1)
 
 
-def QHQBlock(x,y,z):
+def QHQBlock(x,y,z, dgx=0, dgy=0, dgz=0):
     """
     Unitary of QWP-HWP-QWP block.
+    Order: --QWP(z)->HWP(y)->QWP(x)->
     Args:
         x - rotation of quarter-wave plate
         y - rotation of half-wave plate
         z - rotation of quarter-wave plate
+        dgx, dgy, dgz - respective error retardances        
     Returns:
         unitary matrix of net effect
     """    
-    return QWP(x) @ HWP(y) @ QWP(z)
-
+    #return QWP(x) @ HWP(y) @ QWP(z)
+    return WP(x, dgx+np.pi/2) @ WP(y, dgy+np.pi) @ WP(z, dgz+np.pi/2)
 
 def ProcessSimilarity(A,B):
     """
@@ -139,6 +141,30 @@ def SearchForU(U, tol=1e-6):
     Fs = np.array([R['fun'] for R in Rs])
     idx = np.argmin(Fs)    
     return Rs[idx]
+
+def SearchForU2(U, dgx=0, dgy=0, dgz=0, tol=1e-6):
+    """
+    Search for angles x,y,z which implement desired unitary U with
+    three wave-plates with imperfect retardances:
+    QWP(X)-HWP(y)-QWP(z)->    
+    In this version, only perfect waveplates are considered.
+    Args:
+        U - desired unitary single-qubit operation
+        dgx, dgy, dgz - respective waveplate retardance errors
+        tol - minimizer tolerance, see scipy.optimize.minimize docs.
+    Returns:
+        R - dictionary with minimization details. 
+        R['x'] contains desired angles, R['fun'] is measure of quality (should be -1)
+        See scipy.optimize.minimize docs for more details.
+    """
+    #Construct function to be minimized
+    def minim(x):
+        Ux = QHQBlock(x[0],x[1],x[2], dgx, dgy, dgz)        
+        return -ProcessSimilarity(Ux, U)
+    Rs = [minimize(minim, g, bounds=[wp_bounds]*3, tol=tol) for g in search_grid_qhq]
+    Fs = np.array([R['fun'] for R in Rs])
+    idx = np.argmin(Fs)    
+    return Rs[idx] 
 
 def SearchForKet(ket, input_state=np.array([[1],[0]]), dret1 = 0, dret2 = 2, tol=1e-6):
     """
