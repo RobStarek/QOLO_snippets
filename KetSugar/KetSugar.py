@@ -328,17 +328,23 @@ def EntOfForm(rho):
     else:
         return (-x_arg*np.log2(x_arg) - (1-x_arg)*np.log2(1-x_arg))
 
-def VonNeumannEntropy(rho):
+def VonNeumannEntropy(rho, ln=False):
     """
     Von Neumann Entropy of a density matrix.
+    Log2 is taken in the context of information (ln = False).
+    Natural log is taken in the context of themodynamics (ln = True)
     S = -Sum_i [lambda_i log2(lambda_1)]
     Defined in Nielsen, Michael A. and Isaac Chuang (2001). Quantum computation and quantum information
     or on wiki: https://en.wikipedia.org/wiki/Von_Neumann_entropy
     Args:
         rho ... density matrix (Hermitian)
+        base ... 2 for log2, 
     Returns: 
         real number
     """
     eigs = np.linalg.eigh(rho)[0]
-    nzeig = eigs[eigs > 0] #non-zero eigenvalues
-    return -1*(nzeig @ np.log2(nzeig)) #sum of products
+    nzeig = eigs[eigs > 0] #non-zero eigenvalues    
+    if ln:
+        return -1*(nzeig @ np.log(nzeig)) #sum of products
+    else:    
+        return -1*(nzeig @ np.log2(nzeig)) #sum of products
