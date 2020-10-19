@@ -6,7 +6,7 @@ I would like to store and share useful code-snippets for QOLO lab, mainly for di
 
 ## MaxLik.py
 This module provides a simple numpy-implementation of Maximum likelihood reconstruction
-method [1,2] for reconstructing low-dimensional quantum states and processes (<=6 qubits).
+method [1,2,3] for reconstructing low-dimensional quantum states and processes (<=6 qubits).
 
 This package is limited to projection and preparation of pure states.
 
@@ -40,8 +40,9 @@ E = Reconstruct(testdata, RPV, 1000, 1e-6)
 See more examples to learn how to reconstruct multi-qubit state or quantum process.
         
 ### References:
-1. [Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001)](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101)
-2. [Quantum State Estimation. Lecture Notes in Physics (Springer Berlin Heidelberg, 2004), ISBN: 978-3-540-44481-7](https://doi.org/10.1007/b98673)
+1. Jezek, Fiurasek, Hradil, Quantum inference of states and processes, Phys. Rev. A 68, 012305 (2003) (https://journals.aps.org/pra/abstract/10.1103/PhysRevA.68.012305)
+2. [Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001)](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101)
+3. [Quantum State Estimation. Lecture Notes in Physics (Springer Berlin Heidelberg, 2004), ISBN: 978-3-540-44481-7](https://doi.org/10.1007/b98673)
 
 ***
 
