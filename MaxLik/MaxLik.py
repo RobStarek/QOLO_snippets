@@ -3,7 +3,7 @@
 Discrete-variable quantum maximum-likelihood reconstruction.
 
 This module provides a simple numpy-implementation of Maximum likelihood reconstruction
-method [1,2] for reconstructing low-dimensional quantum states and processes (<=6 qubits in total).
+method [1,2,3] for reconstructing low-dimensional quantum states and processes (<=6 qubits in total).
 
 This package is limited to projection and preparation of pure states.
 
