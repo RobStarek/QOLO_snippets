@@ -34,8 +34,9 @@ Example:
         E = Reconstruct(testdata, RPV, 1000, 1e-6)
 
 References:
-    1. Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001) https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101
-    2. Paris (ed.), Rehacek, Quantum State Estimation - 2004, Lecture Notes in Physics, ISBN: 978-3-540-44481-7, https://doi.org/10.1007/b98673
+    1. Jezek, Fiurasek, Hradil, Quantum inference of states and processes, Phys. Rev. A 68, 012305 (2003), https://journals.aps.org/pra/abstract/10.1103/PhysRevA.68.012305
+    2. Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001), https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101
+    3. Paris (ed.), Rehacek, Quantum State Estimation - 2004, Lecture Notes in Physics, ISBN: 978-3-540-44481-7, https://doi.org/10.1007/b98673
 
 Todo:
     * ?
