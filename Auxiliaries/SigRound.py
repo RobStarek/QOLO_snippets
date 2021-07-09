@@ -53,7 +53,7 @@ def FormatToError(mean, std, n=1):
     digits = (n-1)-significant_order
     rounded_std = round(std, digits)
     rounded_mean = round(mean, digits)
-    std_repre = int((10**digits)*rounded_std)
+    std_repre = int(round((10**digits)*rounded_std))
         
     if significant_order > 0:
         format_string = "{:d}"
