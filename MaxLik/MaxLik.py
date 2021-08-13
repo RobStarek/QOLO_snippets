@@ -3,7 +3,7 @@
 Discrete-variable quantum maximum-likelihood reconstruction.
 
 This module provides a simple numpy-implementation of Maximum likelihood reconstruction
-method [1,2,3] for reconstructing low-dimensional quantum states and processes (<=6 qubits in total).
+method [1,2] for reconstructing low-dimensional quantum states and processes (<=6 qubits in total).
 
 This package is limited to projection and preparation of pure states.
 
@@ -34,9 +34,8 @@ Example:
         E = Reconstruct(testdata, RPV, 1000, 1e-6)
 
 References:
-    1. Jezek, Fiurasek, Hradil, Quantum inference of states and processes, Phys. Rev. A 68, 012305 (2003), https://journals.aps.org/pra/abstract/10.1103/PhysRevA.68.012305
-    2. Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001), https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101
-    3. Paris (ed.), Rehacek, Quantum State Estimation - 2004, Lecture Notes in Physics, ISBN: 978-3-540-44481-7, https://doi.org/10.1007/b98673
+    1. Fiurasek, Hradil, Maximum-likelihood estimation of quantum processes, Phys. Rev. A 63, 020101(R) (2001) https://journals.aps.org/pra/abstract/10.1103/PhysRevA.63.020101
+    2. Paris (ed.), Rehacek, Quantum State Estimation - 2004, Lecture Notes in Physics, ISBN: 978-3-540-44481-7, https://doi.org/10.1007/b98673
 
 Todo:
     * ?
@@ -146,7 +145,7 @@ def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs, renorm
     if renorm:
         ProjSum = np.sum(RhoPiVect, axis=0) #Sum of projectors should be ideally 1
         Lam, U = np.linalg.eig(ProjSum) #eigen-decomposition of the vectors to calculate square root of inverse matrix
-        LamInv = np.diag(Lam**-.5)
+        LamInv = np.diag(Lam**-1)
         Hsqrtinv = U @ LamInv @ U.T.conjugate() #square root of inverted matrix
 
     while count < max_iters and meas > tres:
@@ -157,10 +156,11 @@ def ReconstutionLoopVect(data, E, RhoPiVect, dim, max_iters, tres, projs, renorm
         K = np.sum(RhoPiVect*factor.reshape((-1, 1, 1)), axis=0)
         if renorm:
             factor2 = E.T.ravel() @ ProjSum.ravel()
-            HS = Hsqrtinv*(factor2**0.5)
-            K = HS @ K @ HS
-
-        E = K @ E @ K
+            HS = Hsqrtinv*(factor2)
+            #K = HS @ K @ HS
+            E = HS @ K @ E @ K @ HS
+        else:
+            E = K @ E @ K
         E = E/np.trace(E)  # norm the matrix
         meas = abs(np.linalg.norm((Ep-E)))  # threshold check
         count += 1  # counter increment
@@ -196,7 +196,7 @@ def GrammSchmidt(X, row_vecs=False, norm=True):
         return Y.T
 
 
-def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, ProjSum, Hsqrtinv, renorm=False):
+def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, ProjSum, Hinv, renorm=False):
     """
     Internal function for loop-based K-operator construction, written in numba.
     """
@@ -210,12 +210,12 @@ def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, P
             Denom = RhoPiVect[i].T.ravel() @ E.ravel()
             K = K + RhoPiVect[i]*(data[i]/Denom)            
         if renorm:
-            factor2 = E.T.ravel() @ ProjSum.ravel()
-            HS = Hsqrtinv*(factor2**0.5)
-            K = HS @ K @ HS
-            #E = HS @ K @ E @ K @ HS
-        #else:        
-        E = K @ E @ K
+            factor2 = E.T.ravel() @ ProjSum.ravel() #sum of p_j over j
+            HS = Hinv*(factor2)
+            #K = HS @ K @ HS
+            E = HS @ K @ E @ K @ HS
+        else:        
+            E = K @ E @ K
         TrE = np.sum(np.diag(E))
         E = E/TrE  # norm the matrix
         meas = abs(np.linalg.norm((Ep-E)))  # threshold check
@@ -275,7 +275,7 @@ def Reconstruct(data, RPVket, max_iters=100, tres=1e-6, **kwargs):
                 U = np.eye(dim, dtype=complex)
             elif np.abs(np.sum(U @ U.T.conjugate() - np.eye(dim)))>dim*1e-14:
                 U = GrammSchmidt(U, False, True)
-            LamInv = np.diag(Lam**-.5)
+            LamInv = np.diag(Lam**-1)
             Hsqrtinv = U @ LamInv @ U.T.conjugate()
         else:
             Hsqrtinv = H
