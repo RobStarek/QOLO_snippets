@@ -247,3 +247,63 @@ def SearchForProj(ket, projector_state=np.array([[1],[0]]), dret1 = 0, dret2 = 2
     Fs = np.array([R['fun'] for R in Rs])
     idx = np.argmin(Fs)
     return Rs[idx]
+
+#Pauli operators
+_SX = np.array([
+    [0,1],
+    [1,0],    
+], dtype=complex)
+_SY = np.array([
+    [0,-1j],
+    [1j,0],    
+], dtype=complex)
+_SZ = np.array([
+    [1,0],
+    [0,-1],    
+], dtype=complex)
+def SearchForKetAnalytical(ket, LP_input_azimuth = 0):
+    """
+    Search for wave plates angles x,y which prepare desired ket state from input state
+    with setup:
+    LP->QWP(y)-HWP(x)->
+    Args:
+        ket - desired Jones vector to be prepared
+        LP_input_azimuth - direction of input polarization        
+    Returns:
+        x, y
+    """
+    aux_ket = ROT(-LP_input_azimuth) @ ket
+    #Bloch vector componetns
+    X = (np.conjugate(aux_ket.T) @ _SX @ aux_ket)[0,0].real
+    Y = (np.conjugate(aux_ket.T) @ _SY @ aux_ket)[0,0].real
+    Z = (np.conjugate(aux_ket.T) @ _SZ @ aux_ket)[0,0].real
+    #neccessary clipping
+    X = max(min(1,X),-1)
+    Y = max(min(1,Y),-1)    
+    Z = max(min(1,Z),-1)
+    beta = -np.arcsin(Y)/2
+    if Z==0:
+        if X>=0:
+            alpha = np.pi/8 + beta/2 + ((np.pi/4)*(Z<0))
+        else:
+            alpha = -np.pi/8 + beta/2 + ((np.pi/4)*(Z<0))
+    else:
+        alpha = np.arctan(X/Z)/4 + beta/2 + ((np.pi/4)*(Z<0))
+    beta += LP_input_azimuth
+    alpha += LP_input_azimuth
+    return alpha, beta
+
+def SearchForProjAnalytical(ket, LP_input_azimuth = 0):
+    """
+    Search for wave plates angles x,y which perform a projection onto 
+    a desired ket state, with given azimuth o linear polarizer
+    with setup:
+    --HWP(x)-QWP(y)->|LP><LP|
+    Args:
+        ket - desired Jones vector to be prepared
+        LP_input_azimuth - direction of input polarization        
+    Returns:
+        x, y
+    """
+    alpha, beta = SearchForKetAnalytical(ket, LP_input_azimuth)    
+    return alpha, beta + np.pi/2
