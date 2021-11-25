@@ -12,6 +12,35 @@ M.-D. Choi, Completely Positive Linear Maps on Complex Matrices, Linear Algebra 
 https://en.wikipedia.org/wiki/Channel-state_duality
 """
 
+def ChiKetToKraus(chiket):
+    """
+    Fold n-qubit process ket (in Choi-Jamilkowski formalism) into operator matrix.
+    Args:
+        chiket ... column ndarray (2^(2n) x 1), complex
+    Returns:
+        U ... operator ndarray (2^n x 2^n)
+    """
+    norm = ks.braket(chiket, chiket)
+    d = chiket.shape[0]
+    dim = int(d**0.5)    
+    U = chiket.ravel().reshape((dim, dim)).T
+    U = norm*U*(dim**0.5)
+    return U
+
+def GetKrausFromChi(chi):
+    """
+    Decompose Choi matrix of a n-qubit process into its Kraus eigenoperators
+    Args:
+        chi ... column ndarray (2^(2n) x 2^(2n)), complex
+    Returns:
+        eigevalues ... corresponding probabilities of operators
+        matrices ... list of 2^(2n) operators, ndarrays (2^n x 2^n)
+    """    
+    eigenvalues, eigenkets = np.linalg.eigh(chi)
+    d = chi.shape[0]
+    matrices = [ChiKetToKraus(eigenkets[:,i].reshape((d,1))) for i in range(d)]
+    return eigenvalues, matrices
+
 def GuessUfromChoi(Chi):
     """
     Guess unitary parameters from Choi matrix Chi. 
