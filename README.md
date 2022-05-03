@@ -69,6 +69,7 @@ It can be used as a module with definions, or the functions/constants could be c
 * General partial transposition of n-qubit density matrix over specified qubits.
 * Concurrence computation
 * Entanglement of formation computation
+* note: for a more elegant and faster implementation of partial trace and partial transposition see https://github.com/jan-provaznik/impartial
 
 ### Example:
 A simple example for simplification of GHZ state ket construction
