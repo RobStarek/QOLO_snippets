@@ -113,4 +113,8 @@ Now with optional compensation for imperfect retardances of the waveplates.
 ***
 
 ## ChoiBox
-A little collection of function for creating, finding and transforming unitary to Choi matrices.
+A little collection of functions for creating, finding and transforming unitary to Choi matrices.
+
+*** 
+## Pauli decomposer
+Decompose your DV operators into a weighted sum of Pauli matrices Kronecker products. Or decompose the operator into a weighted sum of projectors to eigenstates of the generalized Pauli matrices.
