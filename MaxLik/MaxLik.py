@@ -207,6 +207,8 @@ def _ReconstructLoopCycles(data, E, K, RhoPiVect, dim, max_iters, tres, projs, P
         Ep = E  # Original matrix for comparison
         K[:, :] = 0  # reset K operator
         for i in range(projs):
+            if data[i]==0:
+                continue
             Denom = RhoPiVect[i].T.ravel() @ E.ravel()
             K = K + RhoPiVect[i]*(data[i]/Denom)            
         if renorm:
