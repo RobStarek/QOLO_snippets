@@ -40,14 +40,16 @@ for theta, phi in zip(ParamsTheta, ParamsPhi):
         tomogram.append(amplitude.real)
     tomogram = np.array(tomogram)        
     Data.append(tomogram)
-    RhoML = Reconstruct(tomogram, RPV, 1000, 1e-9)
-    Fid = ks.Overlap(RhoML, rho)
+    RhoML = Reconstruct(tomogram, RPV, 10000, 1e-12)
+    Fid = ks.Overlap(RhoML, rho).real
     Fidelities.append(Fid)
 
 plt.plot(ParamsTheta, ".")
 plt.plot(ParamsPhi, ".")
 plt.plot(Fidelities, "o")
 plt.show()
+
+print(np.mean(Fidelities), np.std(Fidelities))
 
 
 

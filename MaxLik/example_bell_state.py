@@ -16,8 +16,10 @@ RMin = (LO-1j*HI)*(2**-.5)
 #Generate tomogram of Bell state |00> + |11>
 PauliStates = [LO,HI,Plus,Minus,RPlu,RMin]
 BellState = np.array([[1],[0],[0],[1]])*2**-.5
+true_rho = BellState @ BellState.T.conjugate()
+
 data = np.zeros((36,))
-rate = 10000
+rate = 100_000
 for i, Q1 in enumerate(PauliStates):
     for j, Q2 in enumerate(PauliStates):
         projection = np.kron(Q1, Q2)
@@ -27,5 +29,8 @@ for i, Q1 in enumerate(PauliStates):
 #Reconstruct simulated tomogram
 Order = [PauliStates,PauliStates]
 RPV = MakeRPV(Order, False)
-E = Reconstruct(data, RPV, 1000, 1e-6)
+E = Reconstruct(data, RPV, 10000, 1e-12)
 print(np.round(E,3))
+print(np.round(true_rho, 3))
+
+print(f"Frob. distance from truth: {np.linalg.norm(true_rho - E)}")

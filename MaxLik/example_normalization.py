@@ -25,7 +25,7 @@ ops = np.array([
 
 data = np.array([ks.ExpectationValue(ket, rho).real for ket in ps])
 rhorec = ml.Reconstruct(data, ops, 10000, 1e-9, RhoPiVect=True, Renorm=False)
-F = ks.Fidelity(rhorec, rho)
+F = ks.Fidelity(rhorec, rho).real
 P = ks.Purity(rhorec)
 print("Without normalization")
 print(P)
@@ -33,7 +33,7 @@ print(F)
 
 data = np.array([ks.ExpectationValue(ket, rho).real for ket in ps])
 rhorec = ml.Reconstruct(data, ops, 10000, 1e-9, RhoPiVect=True, Renorm=True)
-F = ks.Fidelity(rhorec, rho)
+F = ks.Fidelity(rhorec, rho).real
 P = ks.Purity(rhorec)
 print("With normalization")
 print(P)
