@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
+from re import A
 import numpy as np
 from scipy.optimize import minimize
 import KetSugar as ks
+import departed #https://github.com/jan-provaznik/departed
+
 
 """
 Little toolbox for manipulating unitary matrices and Choi matrices.
@@ -140,9 +143,95 @@ def MapTransform(rho, chi, renorm = True):
     trace_list = [1]*n + [0]*n
 
     POVM = np.kron(rho.T, np.eye(d, dtype=complex))
-    ChiTrans = POVM @ chi @ ks.dagger(POVM)
-    RhoOut = ks.TraceOverQubits(ChiTrans, trace_list)
+    ChiTrans = POVM @ chi #@ ks.dagger(POVM)
+    #RhoOut = ks.TraceOverQubits(ChiTrans, trace_list)
+    RhoOut = departed.ptrace(ChiTrans, [2]*(2*n), trace_list) 
     if renorm:
         return RhoOut/np.trace(RhoOut)
     else:
         return RhoOut
+
+def ChainTwoChoisSym(choi_a, choi_b):
+    """
+    Contatenate two Choi matrices of same dimensions.
+    S stands for symmetrical version (input and output spaces have the same dimension)        
+    """
+    d = choi_a.shape[0]
+    n = int(np.log2(d)) #number of qubits in choi matrix
+    nhalf = int(n//2) #number of qubits in input space
+    component_dims = [2]*n
+    component_dims_2 = [2]*(n+nhalf)
+
+    mask = [1]*nhalf + [0]*nhalf
+    mask_2 = [0]*nhalf + [1]*nhalf + [0]*nhalf
+
+    eye = np.eye(2**nhalf)
+    ptA = np.kron(choi_a, eye)
+    chi_b_t1 = departed.ptranspose(choi_b, component_dims, mask)
+    ptB = np.kron(eye, chi_b_t1)
+
+    return departed.ptrace(ptA @ ptB, component_dims_2, mask_2)
+
+
+def ChainTwoChoisAsym(choi_a, choi_b, a_dims, input_a_mask, b_dims, input_b_mask):    
+    """
+    Contatenate two Choi matrices of same dimensions.
+    The resulting operation is equivalent of first applying channel A and then channel B.
+    A stands for asymmetrical version, where all matrices does not have to have the same
+    dimensions. But it still must be that dim(choi_a_output) == dim(choi_b_input).
+
+    It uses formula
+    :math:`\chi_{a,01} \circ \chi_{b,12} = \mathrm{Tr}_{1}[(\chi_{a,01} \otimes 1_{2})\cdot (1_0 \otimes \chi_{b,12}^{T_1})]`
+    
+    Args:
+        choi_a, choi_b ... Choi matrices to be concatenated
+        a_dims ... list of system dimensions of the choi_a
+        input_a_mask ... list with 1 (True) at places where the system represents input space
+           warning: it should be aligned, i.e. [1,1,0,0] is OK, but [0,1,0,1] not
+        b_dims, input_b_mask ... analogous for choi_b
+    Returns:
+        choi_a o choi_b ... concatenated proces matrix
+        out_mask ... list where elements are 1 if the sub-system represents input space
+        out_dims ... list with dimensions of the subsystems    
+    """        
+    arr_a_dims = np.array(a_dims)
+    arr_b_dims = np.array(b_dims)
+    arr_a_mask = np.array(input_a_mask).astype(bool)
+    arr_b_mask = np.array(input_b_mask).astype(bool)
+    arr_bo_mask = np.invert(arr_b_mask)
+    eye_ai= np.eye(np.prod(arr_a_dims[arr_a_mask]))
+    eye_bo= np.eye(np.prod(arr_b_dims[arr_bo_mask]))    
+    dims = np.concatenate([arr_a_dims[arr_a_mask], arr_b_dims])
+    transpose_mask = np.concatenate([arr_a_mask[arr_a_mask]*False, arr_b_mask])
+    ptA = np.kron(choi_a, eye_bo)
+    chi_b_t1 = departed.ptranspose(choi_b, b_dims, input_b_mask)
+    ptB = np.kron(eye_ai, chi_b_t1)      
+    out_mask = list(np.concatenate([arr_a_mask[input_a_mask], arr_b_mask[arr_bo_mask]]))        
+    out_dims = list(np.concatenate([arr_a_dims[arr_a_mask], arr_b_dims[arr_bo_mask]]))
+    return departed.ptrace(ptA @ ptB, dims, transpose_mask), list(out_mask), list(out_dims)
+
+
+def ChainChoisAsym(choi_list, dims_list, input_mask_list):
+    """
+    Chain (contatenete) multiple Choi matrices in order of their appearence in the list.
+
+    Args:
+        choi_list ... list with choi matrices to be concatenated
+        dim_list ... list of lists containing subsystem dimensions
+        input_mask_list ... list of lists containing '1' if the subsystem represents input space
+    Returns:
+        choi_eff ... concantenated process matrix
+    """    
+    choi_eff = None
+    dims_eff = None
+    mask_eff = None
+    for i, (choi, dims, mask) in enumerate(zip(choi_list, dims_list, input_mask_list)):
+        if i == 0:
+            choi_eff = choi
+            dims_eff = dims
+            mask_eff = mask
+            continue
+        choi_eff, mask_eff, dims_eff = ChainTwoChoisAsym(
+            choi_eff, choi, dims_eff, mask_eff, dims, mask
+        )
+    return choi_eff
