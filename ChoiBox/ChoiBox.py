@@ -199,6 +199,7 @@ def ChainTwoChoisAsym(choi_a, choi_b, a_dims, input_a_mask, b_dims, input_b_mask
     arr_a_mask = np.array(input_a_mask).astype(bool)
     arr_b_mask = np.array(input_b_mask).astype(bool)
     arr_bo_mask = np.invert(arr_b_mask)
+    
     eye_ai= np.eye(np.prod(arr_a_dims[arr_a_mask]))
     eye_bo= np.eye(np.prod(arr_b_dims[arr_bo_mask]))    
     dims = np.concatenate([arr_a_dims[arr_a_mask], arr_b_dims])
@@ -206,7 +207,7 @@ def ChainTwoChoisAsym(choi_a, choi_b, a_dims, input_a_mask, b_dims, input_b_mask
     ptA = np.kron(choi_a, eye_bo)
     chi_b_t1 = departed.ptranspose(choi_b, b_dims, input_b_mask)
     ptB = np.kron(eye_ai, chi_b_t1)      
-    out_mask = list(np.concatenate([arr_a_mask[input_a_mask], arr_b_mask[arr_bo_mask]]))        
+    out_mask = list(np.concatenate([arr_a_mask[arr_a_mask], arr_b_mask[arr_bo_mask]]))
     out_dims = list(np.concatenate([arr_a_dims[arr_a_mask], arr_b_dims[arr_bo_mask]]))
     return departed.ptrace(ptA @ ptB, dims, transpose_mask), list(out_mask), list(out_dims)
 
@@ -231,6 +232,8 @@ def ChainChoisAsym(choi_list, dims_list, input_mask_list):
             dims_eff = dims
             mask_eff = mask
             continue
+        #print(dims_eff, ":", dims)
+        #print(mask_eff, ":", mask)
         choi_eff, mask_eff, dims_eff = ChainTwoChoisAsym(
             choi_eff, choi, dims_eff, mask_eff, dims, mask
         )
