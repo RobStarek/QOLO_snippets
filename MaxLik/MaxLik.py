@@ -200,7 +200,7 @@ def GrammSchmidt(X, row_vecs=False, norm=True):
         X = X.T
     Y = X[0:1, :].copy()
     for i in range(1, X.shape[0]):
-        proj = np.diag((X[i, :].dot(Y.T) / np.linalg.norm(Y, axis=1) ** 2).flat).dot(Y)
+        proj = np.diag((X[i, :].dot(Y.T.conj()) / np.linalg.norm(Y, axis=1) ** 2).flat).dot(Y)
         Y = np.vstack((Y, X[i, :] - proj.sum(0)))
     if norm:
         Y = np.diag(1 / np.linalg.norm(Y, axis=1)).dot(Y)
